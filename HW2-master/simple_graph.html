@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Homework 2 Graph</title>
+<style>
+  .link {
+    stroke: gray;
+    stroke-width: 1.5px;
+    fill: none ;
+  }
+
+  .name {
+    font-family: sans-serif
+    font-size: 12px
+    font-weight: bold
+  }
+</style>
+<body>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+
+  <form>
+    Horizontal Scale:
+    <label><input type="radio" name="horiz_scale" value="even_space" checked> Linear</label>
+    <label><input type="radio" name="horiz_scale" value="time"> Time</label>
+  </form>
+<script>
+
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Add Data & SVG @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
+d3.json("repos_caleydo.json", function(error,data) { if (error) return console.log("error!");
+    
+    var width = 1350;
+    var height = 1050;
+    var padding = 75;
+        
+    var svg = d3.select("body")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height);
+
+    // Below code block adapted from Mike Bostock Example (who created D3): http://bl.ocks.org/mbostock/1153292    
+    // mbostock’s block #1153292 August 18, 2011, Mobile Patent Suits  (similar code block to that linked in the problem set)
+    svg.append("defs")
+       .selectAll("marker")
+       .data(["end"]) //changed to be my data
+       .enter()
+       .append("marker")
+       .attr("id", String)
+       .attr("viewBox", "0 -5 10 10")
+       .attr("refX", 15)
+       .attr("refY", -1.5)
+       .attr("markerWidth", 6)
+       .attr("markerHeight", 6)
+       .attr("orient", "auto")
+       .append("path")
+       .attr("d", "M0,-5L10,0L0,5");            
+    //Bostock code block end   
+    
+    var fill = d3.scale.category10();
+
+    var graph = {nodes:[], links:[]};
+
+    var node_list = {} ; //make empty dict
+    
+    //add data to nodes
+    data.map( function(d,i) { //fill node_list with nodes from caleydo data. nodes are indexed 0 through length.
+        d.index = i ; //add node index
+        node_list[d.sha] = i ; //put id since commits are organized under sha in json data
+        graph.nodes.push(d); //each node now has a commit      
+        });
+    //console.log(graph.nodes) //test
+
+    //map on parents of data so they are linked up to nodes
+    data.map( function(d,i) {
+        d.parents.map( function(p) {
+                       if(p.sha in node_list) { //if a commit is in the list of nodes
+                          graph.links.push({source: graph.nodes[node_list[p.sha]], target: d}); //source is parent (p) ; target is commit
+                        };
+        });      
+    });
+    
+    //create user list
+    var user_list = d3.range(data.length).map( function(d) {return data[d].author.login });    
+    var unique_users = {} ; //declare new object   
+    
+    for(j=0; j<user_list.length ; j++) { //create dict w/ unique users. see: http://www.w3schools.com/js/js_loop_for.asp
+        if (!(user_list[j] in unique_users)) { //if user in list is not in unique users dict. see: http://www.quirksmode.org/js/boolean.html for 'has not' boolean logic
+            unique_users[user_list[j]] = true; //add to dict
+        }
+    }    
+    
+    unique_users = Object.keys(unique_users); // list of unique names. see: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys
+
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Scales & Axes @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
+    
+    //color_scale adapted from my CS171 HW1 solution
+    var color_scale = d3.scale.linear().domain([0,unique_users.length]) //have your scale go from min to max 
+                                       .interpolate(d3.interpolateRgb) //added for problem 4
+                                       .range(["blue", "red"]);                 
+    
+    //scale by authors modifying repo    
+    var ordinal_scale = d3.scale.ordinal().domain(unique_users)
+                                          .range(d3.range(unique_users.length)); 
+    
+    //add even space & time scales
+    var linear_scale = d3.scale.linear().domain([data.length,0]) 
+                                        .range([0+padding, width-padding]); //start with oldest (end of data) to newest (0)
+    
+    //we know dates are already ordered, so no need for d3.max/min/extent
+    var min_date = new Date(Date.parse(graph.nodes[graph.nodes.length-1].commit.committer.date)) //last one
+        max_date = new Date(Date.parse(graph.nodes[0].commit.committer.date)); //first one
+        
+    var time_scale = d3.time.scale().domain([min_date, max_date])
+                                    .range([0+padding, width-padding]);
+                                   
+    var xAxis_time = d3.svg.axis()
+                       .scale(time_scale)
+                       .orient("bottom");
+                  
+    var xAxis_linear = d3.svg.axis()
+                         .scale(linear_scale)
+                         .orient("bottom");
+              
+ //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Functions @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
+
+    function tick(d) {
+      graph_update(0);
+    }
+
+    function line_layout() {
+        graph.nodes.forEach(function(d,i) { d.x = linear_scale(i);
+                                            d.y = 100 + 50*ordinal_scale(d.author.login);})
+        d3.select("#time").remove();
+        svg.append("g")
+           .call(xAxis_linear)
+           .attr("id","linear");
+         
+        graph_update(500);
+    }
+    
+    d3.select("input[value=\"even_space\"]").on("click", line_layout);
+   
+    function time_layout() { //time scale function
+        graph.nodes.forEach(function(d,i) { d.x = time_scale(new Date(d.commit.committer.date));
+                                            d.y = 100+50*ordinal_scale(d.author.login);});
+        d3.select("#linear").remove();
+      
+        svg.append("g")
+           .call(xAxis_time) 
+           .attr("id","time");
+         
+        graph_update(500);
+    }
+   
+   d3.select("input[value=\"time\"]").on("click", time_layout);
+   
+    function graph_update(delay) {
+      link.transition().duration(delay)
+          .attr("d", function(d) {return "M "+d.source.x+" "+d.source.y+" L "+d.source.x+" "+d.target.y+" L "+d.target.x+" "+d.target.y});
+          
+      node.transition().duration(delay).attr("transform", function(d) {return "translate("+d.x+","+d.y+")";});     
+    }
+
+//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Nodes/Paths/Tooltips @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 
+
+    var link = svg.selectAll(".link")
+                  .data(graph.links)
+                  .enter().append("path") // replaced from "link"
+                  .attr("class", "link")
+                  .attr("marker-end","url(#end)") ;
+
+    var node = svg.selectAll(".node")
+                  .data(graph.nodes)
+                  .enter()
+                  .append("g")
+                  .attr("class", "node")
+                  .append("circle")
+                  .attr("r",5)
+                  .style("fill",function(d,i){return color_scale(ordinal_scale(d.author.login));}) ;
+    
+    //add tooltip
+    node.on("mouseover", function(d) { svg.append("text")
+                                          .attr("id", "tooltip")
+                                          .attr("class","name")              
+                                          .attr("x", d.x-10)
+                                          .attr("y", d.y-25)                            
+                                          .text(d.author.login);
+                                      //add image to graph   
+                                       svg.append("image") //disp image
+                                          .attr("id","headshot") //label user avatar
+                                          .attr("xlink:href", d.author.avatar_url) //link to avatar pic
+                                          .attr("x", d.x+40) // im loc
+                                          .attr("y", d.y-40) //im loc
+                                          .attr("width",25) //im size
+                                          .attr("height",25) //im size
+                                      })                                          
+    //remove tooltip                                                                               
+        .on("mouseout", function(d) {   d3.select("#tooltip").remove() ;                                         
+                                        d3.select("#headshot").remove() ;});
+                                         
+    line_layout() ;
+});
+</script>
+</body>
+</html>
