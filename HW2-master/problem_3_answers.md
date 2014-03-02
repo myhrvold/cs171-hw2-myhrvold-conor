@@ -9,7 +9,11 @@ From the Lee paper, the current visualization is not very good at filtering or s
 </p>
 
 <p>
-d3, jquery, and bootstrap all have much more volume of commits, and additionally many more users who have contributed unique repos to the projects (i.e. they have many more rows of user names than, say, caleydo does.) What this means for displaying that information, is that a large group of users with many more commits is unwieldy to take a "Big Picture" of, with respect to time. So, for my visualization I am eliminating that component to try to look at individual contributors, as opposed to at commit-centric visualization which the Github Network Graph proudly is.
+FYI, I didn’t include all of the code permutations for the 3 repos, but I have the .json data, and what you do, is go in my simple_graph, and replace the d3.json command with the .json file you want, instead of the Calyedo one.
+</p>
+
+<p>
+d3, bootstrap, and jquery all have much more volume of commits, and additionally many more users who have contributed unique repos to the projects (i.e. they have many more rows of user names than, say, caleydo does.) What this means for displaying that information, is that a large group of users with many more commits is unwieldy to take a "Big Picture" of, with respect to time. So, for my visualization I am eliminating that component to try to look at individual contributors, as opposed to at commit-centric visualization which the Github Network Graph proudly is.
 </p>
 
 <p>
