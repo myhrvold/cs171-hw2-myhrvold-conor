@@ -34,3 +34,6 @@ And then show the nodes connecting people, which all flowed back to Mike emphasi
 I'm pleased with the result, aimed at a product manager / hands-off project manager who sees, of the d3.js group, who's doing most of the contributing and that everyone is connected in a top-down hierarchy system, a sort of 'benevolent dictatorship' common in many open source projects.
 </p>
  
+<p>
+Also, although I used some of my Problem 2 and some of the sample layouts I also tried to be as original as possible in presentation of information, compared to the many hundreds of visualizations I have seen using d3.js. So, this viz might not be the most complex in terms of network graph etc., but it's definitely a different take from what most of the landscape currently shows.
+</p>
