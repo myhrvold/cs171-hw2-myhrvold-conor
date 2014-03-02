@@ -19,7 +19,18 @@ The next task was going to be showing the relative collaboration between each pe
 </p>
 
 <p>
+I'm highlighting these failures since I think it's important to understand that you can have a lot of great viz ideas but that some just won't pan out when you have the data and try to make the visualization.
+</p>
+
+<p>
 What I did instead is show how many more commits Mike has, and Jason (who co-wrote), than other contributors to the master branch, and then have the alternative visual layout be a random graph display, where you just had the size of the node be how many commits.
 </p>
 
+<p>
+And then show the nodes connecting people, which all flowed back to Mike emphasizing his main role as in charge of d3.js. This fulfills the objective of showing d3.js commits by people, and the relative amount of contribution that has taken place over a good chunk of time (which I queried from the website, actually not even using curl but copying the sha at the bottom and displaying the 'per page 100' that was directly from the link in the homework.)
+</p>
+
+<p>
+I'm pleased with the result, aimed at a product manager / hands-off project manager who sees, of the d3.js group, who's doing most of the contributing and that everyone is connected in a top-down hierarchy system, a sort of 'benevolent dictatorship' common in many open source projects.
+</p>
  
