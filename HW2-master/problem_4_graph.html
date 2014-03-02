@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Homework 2 Graph, Problem 4</title>
+<style>
+  .link {
+    stroke: gray;
+    stroke-width: 1px;
+    fill: none ;
+  }
+
+  .name {
+    font-family: sans-serif
+    font-size: 12px
+  }
+
+  .username {
+    font-family: sans-serif
+    font-size: 14px
+    font-weight: bold
+  }
+  
+  .circle:hover {
+    fill: #FFCECE ;
+  }
+  
+#mySVG {
+        margin-left:auto; 
+        margin-right: auto; 
+        display:block;
+        } 
+/* http://stackoverflow.com/questions/13373169/align-svg-to-center-of-screen */
+    
+</style>
+<head>
+
+<div align="center"> 
+    <h1> d3.js master branch</h1>
+    <h3> number of commits by user</h3>
+    <h3>Dec 2012 - Feb 2014 </h3>
+</div>
+
+ <form>
+  Layout:
+    <label><input type="radio" name="layout" value="commit_disp" checked> By Commits</label>
+    <label><input type="radio" name="layout" value="random" > Random</label>
+  </form>
+  
+</head>
+<body>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script>
+    //declare global variables so can see in console
+    var user_list ; 
+    var unique_users = {} ;
+    var num_map ;
+    var users_to_num ;
+    
+    d3.json("d3_large_commits.json", function(error,data) { if (error) return console.log("error!");
+
+        var width = 1000,
+            height = 400,
+            padding = 50;
+
+        var svg = d3.select("body").append("svg")
+                                   .attr("id","mySVG")
+                                   .attr("width", width)
+                                   .attr("height", height);
+
+        var fill = d3.scale.category10();
+
+        var graph = {nodes:[], links:[]};
+
+    //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Users @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+        
+        user_list = d3.range(data.length).map(function(d) {return data[d].author.login}); //create user list 
+        
+        for(j=0; j<user_list.length ; j++) { 
+            if (!(user_list[j] in unique_users)) {
+                unique_users[user_list[j]] = true; 
+            }
+        }       
+        
+        unique_users = Object.keys(unique_users);  //have list of unique users
+            
+        users_to_num = d3.scale.ordinal().domain(unique_users) //make ordinal scale of unique users -> unique number
+                                         .range(d3.range(unique_users.length)); 
+
+        graph.nodes = d3.range(unique_users.length).map(function(i) {return {"username":unique_users[i], data:[], commits:[] }; }) //each node has their name
+        //console.log(graph.nodes) //have 22 nodes
+        
+        data.map( function(d,i) { //give each unique user a node.
+            for(i=0;i<data.length;i++) {
+                var name = data[i].author.login ;
+                graph.nodes.map( function (node,j) { 
+                    if(name == node.username) { //console.log(node) ;
+                        node.data.push(data[i]) ; //add data to the user nodes
+                    }
+                })
+            }
+        });
+        //console.log(graph.nodes) //now have the list of 22 different nodes 
+        
+        var max_commits = 0 ; //init a max commits
+        for(i=0;i<unique_users.length;i++) { //console.log(graph.nodes[i]) ;
+            var num_commits = graph.nodes[i].data.length ; //commits equals metadata commits
+            if(num_commits > max_commits) { //replace max commits if num commits is greater
+                max_commits = num_commits ;
+            }
+            graph.nodes[i].commits = num_commits ;
+        }
+        
+        //add gray links to nodes
+        graph.nodes.map(function(nodeA) { //console.log(nodeA.data[0].parents[0].sha); console.log(nodeA.data[0])
+                                             for(i=0;i<nodeA.data.length;i++) {
+                                                for(j=0;j<nodeA.data[i].parents.length;j++) {
+                                                    var parent_id = nodeA.data[i].parents[j].sha ;
+                                                    graph.nodes.map(function(nodeB) {
+                                                        if(nodeB.data[0].sha == parent_id){
+                                                            graph.links.push({"source": nodeB, "target": nodeA}) ;  
+                                                        }
+                                                    })
+                                                }
+                                              } 
+            
+                                        })
+           
+        var color_scale = d3.scale.category20().domain(d3.range(graph.nodes.length)) ;
+                  
+    //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Functions @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+        function random_layout() {
+          
+          graph.nodes.forEach(function(d,i) {
+            d.x = width/4 + 2*width*Math.random()/4;
+            d.y = height/4 + 2*height*Math.random()/4;
+          })
+          
+          d3.select("#commitAxis").remove();  
+          
+          graph_update(100);
+        }    
+    
+        function tick(d) {
+          graph_update(0);
+        }
+
+        
+        function commit_disp_layout() {  // have the other display be sorting the ones left to right by their number, greatest to least
+
+          var max = 0;
+          
+          for(i=0;i<graph.nodes.length;i++) {
+            if(graph.nodes[i].data.length > max) {
+                max = graph.nodes[i].data.length ;
+            }            
+          }
+          //console.log(max);
+
+          var min = max ;
+
+          for(i=0;i<graph.nodes.length;i++) {
+            if(graph.nodes[i].data.length < min) {
+                min = graph.nodes[i].data.length ;
+            }            
+          }
+          //console.log(min);
+          
+          var local_padding = 200;
+          
+          var xscale = d3.scale.linear().domain([min,max])
+                                        .range([0+local_padding,width-local_padding]);
+          
+          var yscale = d3.scale.linear().domain([0,graph.nodes.length])
+                                        .range([0+local_padding/4,height-local_padding/4]); 
+          
+          graph.nodes.forEach(function(d,i) { //console.log(d) ; console.log(i) ;
+            d.x = xscale(d.data.length) ;
+            d.y = yscale(i) ; //make sure they're not on top of each other
+          })
+          
+        var commitAxis = d3.svg.axis()
+                               .scale(xscale)
+                               .orient("bottom");
+          
+         svg.append("g")
+           .call(commitAxis)
+           .attr("id","commitAxis");
+          
+          graph_update(100);
+        }
+
+        function graph_update(delay) {
+
+            link.transition().duration(delay)
+                             .attr("x1", function(d) { return d.target.x; })
+                             .attr("y1", function(d) { return d.target.y; })
+                             .attr("x2", function(d) { return d.source.x; })
+                             .attr("y2", function(d) { return d.source.y; });
+
+            node.transition().duration(delay)
+                             .attr("transform", function(d) { return "translate("+d.x+","+d.y+")";});
+        }
+        
+    //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ SVG & Interactivity @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    
+        
+        d3.select("input[value=\"commit_disp\"]").on("click", commit_disp_layout);
+        d3.select("input[value=\"random\"]").on("click", random_layout);
+
+        var link = svg.selectAll(".link")
+                      .data(graph.links)
+                      .enter().append("line")
+                      .attr("class", "link")
+
+        var node = svg.selectAll(".node")
+                      .data(graph.nodes)
+                      .enter()
+                      .append("g").attr("class", "node");
+
+        //make circle size dependent on constant size + number of commits
+        //scaling absolutely yields mike bostock & jason davies WAY too large
+        //and others the size of a pin. then, display number commits in center of circle.
+        node.append("circle")
+            .attr("class","circle")
+            .attr("r", function(d) {return 10 + 25*(d.commits / max_commits)} )  
+            .attr("fill", function(d,i) {return color_scale(i)});
+                       
+        //on hover, display commit numbers
+        node.on("mouseover", function(d) { svg.append("text") // ; console.log(d) ;
+                                              .attr("id", "commit_number")
+                                              .attr("class","name")              
+                                              .attr("x", d.x+45)
+                                              .attr("y", d.y-8)                            
+                                              .text(d.commits);
+
+                                           svg.append("text") 
+                                              .attr("id", "commit_text")
+                                              .attr("class","name")              
+                                              .attr("x",d.x-15)
+                                              .attr("y",d.y-8)                            
+                                              .text("commits:"); 
+                                              
+                                           svg.append("text")
+                                              .attr("id", "user_name")
+                                              .attr("class","username")              
+                                              .attr("x",d.x-15)
+                                              .attr("y",d.y-22)                            
+                                              .text(d.username); 
+                                          //add image to graph   
+                                           svg.append("image") //disp image
+                                              .attr("id","headshot") //label user avatar
+                                              .attr("xlink:href", d.data[0].author.avatar_url) //link to avatar pic
+                                              .attr("x",d.x-40) // im loc
+                                              .attr("y",d.y-32) //im loc
+                                              .attr("width",25) //im size
+                                              .attr("height",25) //im size                                              
+                                                                                          
+                                          })                                          
+        //remove on mouse out                                                                               
+            .on("mouseout", function(d) { d3.select("#commit_number").remove();
+                                          d3.select("#user_name").remove(); 
+                                          d3.select("#commit_text").remove();
+                                          d3.select("#headshot").remove(); 
+                                        })  
+            
+        commit_disp_layout();
+    });
+    </script>
+</body>
+</html>
